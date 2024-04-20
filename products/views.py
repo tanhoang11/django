@@ -1,7 +1,7 @@
 from rest_framework import views
 from rest_framework.response import Response
 from django.http import Http404
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
 from .serializers import (
     CategorySerializer,
     ProductSerializer,
@@ -9,51 +9,34 @@ from .serializers import (
     ProductCommentSerializer
 )
 from .models import Category, Product, ProductImage, ProductComment
-from .helpers import custom_response, parse_request
+from WebBanHang.helpers import custom_response, parse_request
 from rest_framework.parsers import JSONParser
 from json import JSONDecodeError
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+# from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 
 class CategoryAPIView(views.APIView):
     def get(self, request):
         try:
             categories = Category.objects.all()
             serializer = CategorySerializer(categories, many=True)
-            return Response({
-                'status': 200,
-                'message': 'Get all categories successfully!',
-                'data': serializer.data
-            }, status=200)
-        except Exception as e:
-            return Response({
-                'status': 400,
-                'message': 'Get all categories failed!',
-                'error': [str(e)]
-            }, status=400)
+            return custom_response('Get all categories successfully!', 'Success', serializer.data, 200)
+        except:
+            return custom_response('Get all categories failed!', 'Error', None, 400)
 
     def post(self, request):
-        try:
-            data = JSONParser().parse(request)
-        except JSONDecodeError:
-            return Response({
-                'status': 400,
-                'message': 'JSON decode error!',
-                'error': None
-            }, status=400)
-        
+        data = parse_request(request)
         serializer = CategorySerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'status': 201,
-                'message': 'Create category successfully!',
-                'data': serializer.data
-            }, status=201)
+            return custom_response('Create category successfully!', 'Success', serializer.data, 201)
         else:
-            return Response({
-                'status': 400,
-                'message': 'Get all categories failed!',
-                'error': serializer.errors
-            }, status=400)
+            return custom_response('Create category failed', 'Error', serializer.errors, 400)
+
+
 class CategoryDetailAPIView(views.APIView):
     def get_object(self, id_slug):
         try:
@@ -89,6 +72,8 @@ class CategoryDetailAPIView(views.APIView):
             return custom_response('Delete category successfully!', 'Success', {"category_id": id_slug}, 204)
         except Http404:
             return custom_response('Delete category failed!', 'Error', "Category not found!", 400)
+
+
 class ProductViewAPI(views.APIView):
     def get(self, request):
         try:
@@ -117,11 +102,12 @@ class ProductViewAPI(views.APIView):
         except Exception as e:
             return custom_response('Create product failed', 'Error', {"error": str(e)}, 400)
 
+
 class ProductDetailAPIView(views.APIView):
     def get_object(self, id_slug):
         try:
             return Product.objects.get(id=id_slug)
-        except Product.DoesNotExist:
+        except:
             raise Http404
 
     def get(self, request, id_slug, format=None):
@@ -129,7 +115,7 @@ class ProductDetailAPIView(views.APIView):
             product = self.get_object(id_slug)
             serializer = ProductSerializer(product)
             return custom_response('Get product successfully!', 'Success', serializer.data, 200)
-        except Http404:
+        except:
             return custom_response('Get product failed!', 'Error', "Product not found!", 400)
 
     def put(self, request, id_slug):
@@ -142,7 +128,7 @@ class ProductDetailAPIView(views.APIView):
                 return custom_response('Update product successfully!', 'Success', serializer.data, 200)
             else:
                 return custom_response('Update product failed', 'Error', serializer.errors, 400)
-        except Http404:
+        except:
             return custom_response('Update product failed', 'Error', "Category not found!", 400)
 
     def delete(self, request, id_slug):
@@ -150,13 +136,15 @@ class ProductDetailAPIView(views.APIView):
             product = self.get_object(id_slug)
             product.delete()
             return custom_response('Delete product successfully!', 'Success', {"product_id": id_slug}, 204)
-        except Http404:
+        except:
             return custom_response('Delete product failed!', 'Error', "Product not found!", 400)
+
 
 class ProductImageAPIView(views.APIView):
     def get(self, request, product_id_slug):
         try:
-            product_images = ProductImage.objects.filter(product_id=product_id_slug).all()
+            product_images = ProductImage.objects.filter(
+                product_id=product_id_slug).all()
             serializers = ProductImageSerializer(product_images, many=True)
             return custom_response('Get all product images successfully!', 'Success', serializers.data, 200)
         except:
@@ -176,17 +164,18 @@ class ProductImageAPIView(views.APIView):
         except Exception as e:
             return custom_response('Create product image failed', 'Error', {"error": str(e)}, 400)
 
+
 class ProductImageDetailAPIView(views.APIView):
     def get_object(self, id_slug):
         try:
             return ProductImage.objects.get(id=id_slug)
-        except ProductImage.DoesNotExist:
+        except:
             raise Http404
 
     def get_object_with_product_id(self, product_id_slug, id_slug):
         try:
             return ProductImage.objects.get(product_id=product_id_slug, id=id_slug)
-        except ProductImage.DoesNotExist:
+        except:
             raise Http404
 
     def get(self, request, product_id_slug, id_slug, format=None):
@@ -194,34 +183,40 @@ class ProductImageDetailAPIView(views.APIView):
             product_image = self.get_object(id_slug)
             serializer = ProductImageSerializer(product_image)
             return custom_response('Get product image successfully!', 'Success', serializer.data, 200)
-        except Http404:
+        except:
             return custom_response('Get product image failed!', 'Error', "Product image not found!", 400)
 
     def put(self, request, product_id_slug, id_slug):
         try:
             data = parse_request(request)
-            product_image = self.get_object_with_product_id(product_id_slug, id_slug)
+            product_image = self.get_object_with_product_id(
+                product_id_slug, id_slug)
             serializer = ProductImageSerializer(product_image, data=data)
             if serializer.is_valid():
                 serializer.save()
                 return custom_response('Update product image successfully!', 'Success', serializer.data, 200)
             else:
                 return custom_response('Update product image failed', 'Error', serializer.errors, 400)
-        except Http404:
+        except:
             return custom_response('Update product image failed', 'Error', "Product image not found!", 400)
 
     def delete(self, request, product_id_slug, id_slug):
         try:
-            product_image = self.get_object_with_product_id(product_id_slug, id_slug)
+            product_image = self.get_object_with_product_id(
+                product_id_slug, id_slug)
             product_image.delete()
             return custom_response('Delete product image successfully!', 'Success', {"product_image_id": id_slug}, 204)
-        except Http404:
+        except:
             return custom_response('Delete product image failed!', 'Error', "Product image not found!", 400)
 
+
 class ProductCommentAPIView(views.APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request, product_id_slug):
         try:
-            product_comments = ProductComment.objects.filter(product_id=product_id_slug).all()
+            product_comments = ProductComment.objects.filter(
+                product_id=product_id_slug).all()
             serializers = ProductCommentSerializer(product_comments, many=True)
             return custom_response('Get all product comments successfully!', 'Success', serializers.data, 200)
         except:
@@ -231,6 +226,7 @@ class ProductCommentAPIView(views.APIView):
         try:
             data = parse_request(request)
             product = Product.objects.get(id=data['product_id'])
+            # Giống code cũ nhưng import khác nhé
             user = User.objects.get(id=data['user_id'])
             product_comment = ProductComment(
                 product_id=product,
@@ -243,19 +239,20 @@ class ProductCommentAPIView(views.APIView):
             serializer = ProductCommentSerializer(product_comment)
             return custom_response('Create product comment successfully!', 'Success', serializer.data, 201)
         except Exception as e:
-            return custom_response('Create product comment failed', 'Error', {"error": str(e)}, 400)
+            return custom_response('Create product comment failed', 'Error', [str(e)], 400)
+
 
 class ProductCommentDetailAPIView(views.APIView):
     def get_object(self, id_slug):
         try:
             return ProductComment.objects.get(id=id_slug)
-        except ProductComment.DoesNotExist:
+        except:
             raise Http404
 
     def get_object_with_product_id(self, product_id_slug, id_slug):
         try:
             return ProductComment.objects.get(product_id=product_id_slug, id=id_slug)
-        except ProductComment.DoesNotExist:
+        except:
             raise Http404
 
     def get(self, request, product_id_slug, id_slug, format=None):
@@ -263,26 +260,28 @@ class ProductCommentDetailAPIView(views.APIView):
             product_comment = self.get_object(id_slug)
             serializer = ProductCommentSerializer(product_comment)
             return custom_response('Get product comment successfully!', 'Success', serializer.data, 200)
-        except Http404:
+        except:
             return custom_response('Get product comment failed!', 'Error', "Product comment not found!", 400)
 
     def put(self, request, product_id_slug, id_slug):
         try:
             data = parse_request(request)
-            product_comment = self.get_object_with_product_id(product_id_slug, id_slug)
+            product_comment = self.get_object_with_product_id(
+                product_id_slug, id_slug)
             serializer = ProductCommentSerializer(product_comment, data=data)
             if serializer.is_valid():
                 serializer.save()
                 return custom_response('Update product comment successfully!', 'Success', serializer.data, 200)
             else:
                 return custom_response('Update product comment failed', 'Error', serializer.errors, 400)
-        except Http404:
+        except:
             return custom_response('Update product comment failed', 'Error', "Product comment not found!", 400)
 
     def delete(self, request, product_id_slug, id_slug):
         try:
-            product_comment = self.get_object_with_product_id(product_id_slug, id_slug)
+            product_comment = self.get_object_with_product_id(
+                product_id_slug, id_slug)
             product_comment.delete()
             return custom_response('Delete product comment successfully!', 'Success', {"product_comment_id": id_slug}, 204)
-        except Http404:
+        except:
             return custom_response('Delete product comment failed!', 'Error', "Product comment not found!", 400)

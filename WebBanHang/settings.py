@@ -11,7 +11,14 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
-
+from datetime import timedelta
+import cloudinary.api
+from decouple import config
+cloudinary.config(
+    cloud_name=config("CLOUDINARY_CLOUD_NAME"),
+    api_key=config("CLOUDINARY_API_KEY"),
+    api_secret=config("CLOUDINARY_API_SECRET"),
+)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,7 +32,7 @@ SECRET_KEY = 'django-insecure-b1si08!q8gx2#9&=7+b)r1zbwam-bv_qyit^hu&a@2dgyrw+u-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['.vercel.app', '*']
 
 
 # Application definition
@@ -41,6 +48,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'cloudinary',
     'upload',
+    'djoser',
+    'user',
 ]
 
 MIDDLEWARE = [
@@ -51,6 +60,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'WebBanHang.urls'
@@ -126,10 +136,32 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-import cloudinary.api
-from decouple import config
-cloudinary.config(
-    cloud_name=config("CLOUDINARY_CLOUD_NAME"),
-    api_key=config("CLOUDINARY_API_KEY"),
-    api_secret=config("CLOUDINARY_API_SECRET"),
-)
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+    # Sử dụng JWT làm phương thức xác thực cho API
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+    # Định nghĩa các quyền truy cập cho API
+        'rest_framework.permissions.IsAdminUser',
+        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
+    ),
+}
+
+SIMPLE_JWT = {
+ # Thay đổi thời gian hết hạn của token
+ 'ACCESS_TOKEN_LIFETIME': timedelta(days=30),
+}
+
+DJOSER = {
+ # Disable tính năng gửi email kích hoạt tài khoản
+ 'SEND_ACTIVATION_EMAIL': False,
+}
+# Mặc định Django có User model rồi, 
+# nên ta cần chỉ định lại User model trong trường hợp cần mở rộng User model
+AUTH_USER_MODEL = 'user.UserAccount'
